@@ -1,0 +1,73 @@
+import { PageHeader } from "@/components/page-header";
+import { StemText, promptStem, storedImageSrc } from "@/components/stem-text";
+import { correctAnswerText, submittedWork } from "@/lib/correct-answer";
+import { loadAttemptSolutions } from "@/lib/load-attempt";
+import { requireUser } from "@/lib/guards";
+import Link from "next/link";
+
+export default async function AttemptSolutionsPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireUser();
+  const { id } = await params;
+  const { attempt, paper } = await loadAttemptSolutions(id);
+  const answerByQuestion = new Map(attempt.answers.map((answer) => [answer.questionId, answer]));
+  const items = paper.questions.toSorted((a, b) => a.sortOrder - b.sortOrder);
+
+  return (
+    <>
+      <PageHeader
+        title={`Lời giải · ${paper.title}`}
+        description={`${attempt.score ?? "—"} / ${attempt.maxScore ?? "—"} · Elo ${attempt.eloBefore ?? "—"} → ${attempt.eloAfter ?? "—"}${attempt.eloDelta != null ? ` (${attempt.eloDelta > 0 ? "+" : ""}${attempt.eloDelta})` : ""}`}
+      >
+        <Link href={`/attempts/${id}`} className="rounded-md border border-line px-4 py-2 text-sm">
+          Về kết quả
+        </Link>
+      </PageHeader>
+      <ol className="space-y-4">
+        {items.map((item, index) => {
+          const answer = answerByQuestion.get(item.questionId);
+          const choices = item.question.choices ?? [];
+          const selected = choices.find((choice) => choice.id === answer?.selectedChoiceId);
+          const snapshot = storedImageSrc(item.question.stemImageId, item.question.stem);
+          const previous = index > 0
+            ? storedImageSrc(items[index - 1].question.stemImageId, items[index - 1].question.stem)
+            : null;
+          const showStem = !snapshot || snapshot !== previous;
+          const explanation = item.question.explanation ?? "";
+          const explSnap = storedImageSrc(item.question.explanationImageId, explanation);
+          const previousExpl =
+            index > 0
+              ? storedImageSrc(
+                  items[index - 1].question.explanationImageId,
+                  items[index - 1].question.explanation ?? "",
+                )
+              : null;
+          const showExpl = Boolean(explanation || explSnap) && (!explSnap || explSnap !== previousExpl);
+          return (
+            <li key={item.questionId} className="rounded-xl border border-line bg-card p-5">
+              <p className="text-xs text-muted">
+                {item.sectionTitle ?? "Câu hỏi"} · {item.itemLabel ?? item.question.type} · {item.points} điểm
+              </p>
+              {showStem ? (
+                <p className="mt-2">
+                  <StemText text={promptStem(item.question.stem, choices.length > 0)} imageId={item.question.stemImageId} />
+                </p>
+              ) : null}
+              <p className="mt-3 text-sm">Bài làm: {submittedWork(selected, answer?.textAnswer)}</p>
+              <p className="mt-1 text-sm">
+                Đáp án: {correctAnswerText(item.question)}
+                {answer?.score != null ? ` · ${answer.score} điểm` : ""}
+                {answer?.correct == null ? "" : answer.correct ? " · Đúng" : " · Sai"}
+              </p>
+              {showExpl ? (
+                <div className="mt-3 rounded-md border border-line px-3 py-2 text-sm">
+                  <StemText text={explanation} imageId={item.question.explanationImageId} />
+                </div>
+              ) : null}
+              {answer?.aiFeedback ? <p className="mt-2 text-sm text-muted">{answer.aiFeedback}</p> : null}
+            </li>
+          );
+        })}
+      </ol>
+    </>
+  );
+}

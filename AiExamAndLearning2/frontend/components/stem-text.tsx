@@ -1,0 +1,71 @@
+import { MathText } from "@/components/math-text";
+
+const IMG = /(\[\[img:[^\]]+\]\])/g;
+const INLINE_CHOICES = /\sA\.\s/;
+const SNAPSHOT = /\[\[img:(\/ts10\/q\/[^\]]+)\]\]/;
+
+export function questionSnapshotSrc(text: string): string | null {
+  const match = SNAPSHOT.exec(text);
+  return match ? match[1] : null;
+}
+
+export function storedImageSrc(imageId?: string | null, text?: string | null): string | null {
+  if (imageId) {
+    return `/api/question-images/${imageId}`;
+  }
+  return text ? questionSnapshotSrc(text) : null;
+}
+
+export function promptStem(text: string, hasChoices = false): string {
+  if (!hasChoices) {
+    return text;
+  }
+  if (questionSnapshotSrc(text)) {
+    return text;
+  }
+  const cut = INLINE_CHOICES.exec(text);
+  return cut ? text.slice(0, cut.index).trim() : text;
+}
+
+export function StemText({
+  text,
+  imageId,
+  className = "",
+}: {
+  text: string;
+  imageId?: string | null;
+  className?: string;
+}) {
+  const snapshot = storedImageSrc(imageId, text);
+  if (snapshot) {
+    return (
+      <img
+        src={snapshot}
+        alt=""
+        className={`block h-auto w-full max-w-3xl rounded-md bg-white ${className}`.trim()}
+      />
+    );
+  }
+  const parts = text.split(IMG);
+  return (
+    <span className={className}>
+      {parts.map((part, index) => {
+        const match = /^\[\[img:([^\]]+)\]\]$/.exec(part);
+        if (!match) {
+          return (
+            <MathText key={index} text={part} />
+          );
+        }
+
+        return (
+          <img
+            key={index}
+            src={match[1]}
+            alt=""
+            className="mx-1 my-1 inline-block h-auto max-h-32 max-w-full object-contain align-middle"
+          />
+        );
+      })}
+    </span>
+  );
+}
