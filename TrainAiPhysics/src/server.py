@@ -292,5 +292,8 @@ if __name__ == "__main__":
         except Exception:
             pass
     import uvicorn
-    print(f"[*] Physics AI Server starting at http://localhost:8001 (Framework: {'FastAPI' if USE_FASTAPI else 'Starlette'})...")
-    uvicorn.run(app, host="127.0.0.1", port=8001)
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", 8001))
+    print(f"[*] Physics AI Server starting at http://{host}:{port} (Framework: {'FastAPI' if USE_FASTAPI else 'Starlette'})...")
+    uvicorn.run(app, host=host, port=port)
+
