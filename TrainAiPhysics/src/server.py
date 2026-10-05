@@ -111,6 +111,17 @@ if USE_FASTAPI:
         allow_headers=["*"],
     )
 
+    @app.api_route("/", methods=["GET", "HEAD"])
+    async def serve_root():
+        return {
+            "status": "online",
+            "message": "Physics AI Engine & Tutor API is running",
+            "service": "Physics AI Engine & Tutor",
+            "subject": "Vật lý",
+            "port": 8001,
+            "version": "2.1.0"
+        }
+
     @app.get("/api/health")
     async def health_check():
         return {
@@ -270,8 +281,19 @@ else:
         res = classify_physics_question(stem)
         return JSONResponse({"success": True, "data": res})
 
+    async def serve_root(request):
+        return JSONResponse({
+            "status": "online",
+            "message": "Physics AI Engine & Tutor API is running",
+            "service": "Physics AI Engine & Tutor",
+            "subject": "Vật lý",
+            "port": 8001,
+            "version": "2.1.0"
+        })
+
     routes = [
-        Route("/api/health", health_check, methods=["GET"]),
+        Route("/", serve_root, methods=["GET", "HEAD"]),
+        Route("/api/health", health_check, methods=["GET", "HEAD"]),
         Route("/api/generate", generate_exercises, methods=["POST"]),
         Route("/api/evaluate", evaluate_answer, methods=["POST"]),
         Route("/api/ai/chat", ai_chat, methods=["POST"]),

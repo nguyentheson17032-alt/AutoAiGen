@@ -295,7 +295,7 @@ if USE_FASTAPI:
             
         return {"success": True, "exercises": exercises}
 
-    @app.get("/")
+    @app.api_route("/", methods=["GET", "HEAD"])
     async def serve_index():
         if os.path.exists(os.path.join(STATIC_DIR, "index.html")):
             return FileResponse(os.path.join(STATIC_DIR, "index.html"))
