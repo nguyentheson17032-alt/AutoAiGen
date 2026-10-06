@@ -13,7 +13,14 @@ type FormatFilter =
   | "linear"
   | "quadratic"
   | "system"
-  | "word_problem";
+  | "word_problem"
+  | "ai_challenge"
+  | "mechanics"
+  | "oscillation_wave"
+  | "circuits_electromagnetism"
+  | "optics"
+  | "thermodynamics"
+  | "nuclear_quantum";
 
 const DIFFICULTY_LABELS: Record<Difficulty, { label: string; badgeClass: string }> = {
   BEGINNER: {
@@ -34,12 +41,22 @@ const DIFFICULTY_LABELS: Record<Difficulty, { label: string; badgeClass: string 
   },
 };
 
-const FORMAT_LABELS: Record<string, string> = {
-  linear: "Phương trình bậc 1",
-  quadratic: "Phương trình bậc 2",
-  system: "Hệ 2 phương trình bậc nhất",
-  word_problem: "Toán thực tế / Lời văn",
-};
+const MATH_FORMAT_OPTIONS = [
+  { value: "linear", label: "Phương trình bậc 1" },
+  { value: "quadratic", label: "Phương trình bậc 2" },
+  { value: "system", label: "Hệ 2 phương trình bậc nhất" },
+  { value: "word_problem", label: "Toán thực tế / Lời văn" },
+  { value: "ai_challenge", label: "Thử thách AI Model" },
+];
+
+const PHYSICS_FORMAT_OPTIONS = [
+  { value: "mechanics", label: "Cơ học & Động lực học" },
+  { value: "oscillation_wave", label: "Dao động & Sóng cơ" },
+  { value: "circuits_electromagnetism", label: "Điện học & Mạch RLC" },
+  { value: "optics", label: "Quang học & Thấu kính" },
+  { value: "thermodynamics", label: "Nhiệt học & Khí lý tưởng" },
+  { value: "nuclear_quantum", label: "Lượng tử & Vật lý hạt nhân" },
+];
 
 function foldText(val: string | null | undefined): string {
   if (!val) return "";
@@ -62,21 +79,38 @@ function matchesQuestionCount(count: number, filter: QuestionCountFilter): boole
 
 function matchesFormat(paper: ClassPaper, filter: FormatFilter): boolean {
   if (filter === "ALL") return true;
-  const title = foldText(paper.title);
+  const text = foldText(`${paper.title || ""} ${paper.description || ""}`);
 
-  if (filter === "linear") {
-    return title.includes("bac 1") || title.includes("bac nhat") || title.includes("linear");
+  switch (filter) {
+    // Dạng Toán
+    case "linear":
+      return text.includes("bac 1") || text.includes("bac nhat") || text.includes("linear");
+    case "quadratic":
+      return text.includes("bac 2") || text.includes("quadratic");
+    case "system":
+      return text.includes("he 2") || text.includes("he phuong trinh") || text.includes("system");
+    case "word_problem":
+      return text.includes("thuc te") || text.includes("loi van") || text.includes("word");
+    case "ai_challenge":
+      return text.includes("ai model") || text.includes("thu thach ai") || text.includes("challenge");
+
+    // Dạng Vật Lý
+    case "mechanics":
+      return text.includes("co hoc") || text.includes("dong luc") || text.includes("mechanic");
+    case "oscillation_wave":
+      return text.includes("dao dong") || text.includes("song co") || text.includes("oscillation") || text.includes("wave");
+    case "circuits_electromagnetism":
+      return text.includes("dien hoc") || text.includes("mach xoay chieu") || text.includes("mach rlc") || text.includes("circuit") || text.includes("electromagnetism");
+    case "optics":
+      return text.includes("quang hoc") || text.includes("thau kinh") || text.includes("optics");
+    case "thermodynamics":
+      return text.includes("nhiet hoc") || text.includes("khi ly tuong") || text.includes("thermodynamics");
+    case "nuclear_quantum":
+      return text.includes("luong tu") || text.includes("hat nhan") || text.includes("nuclear") || text.includes("quantum");
+
+    default:
+      return true;
   }
-  if (filter === "quadratic") {
-    return title.includes("bac 2") || title.includes("quadratic");
-  }
-  if (filter === "system") {
-    return title.includes("he 2") || title.includes("he phuong trinh") || title.includes("system");
-  }
-  if (filter === "word_problem") {
-    return title.includes("thuc te") || title.includes("loi van") || title.includes("word");
-  }
-  return false;
 }
 
 function matchesDifficulty(paper: ClassPaper, filter: DifficultyFilter): boolean {
@@ -144,6 +178,26 @@ export function SharePapersForm({
     });
     return Array.from(map.values());
   }, [subjects, papers, paperSets]);
+
+  // Selected subject metadata for dynamic format filters
+  const selectedSubjectObj = useMemo(() => {
+    if (subjectFilter === "ALL") return null;
+    return availableSubjects.find((s) => s.id === subjectFilter) || null;
+  }, [availableSubjects, subjectFilter]);
+
+  const isPhysicsSubject = useMemo(() => {
+    if (!selectedSubjectObj) return false;
+    const name = foldText(selectedSubjectObj.name);
+    const code = foldText(selectedSubjectObj.code);
+    return name.includes("vat ly") || name.includes("vat li") || name.includes("physic") || code.includes("phys");
+  }, [selectedSubjectObj]);
+
+  const isMathSubject = useMemo(() => {
+    if (!selectedSubjectObj) return false;
+    const name = foldText(selectedSubjectObj.name);
+    const code = foldText(selectedSubjectObj.code);
+    return name.includes("toan") || name.includes("math") || code.includes("math");
+  }, [selectedSubjectObj]);
 
   // Accordion state: set of expanded paperSet IDs
   const [expandedSetIds, setExpandedSetIds] = useState<Set<string>>(() => {
@@ -415,7 +469,10 @@ export function SharePapersForm({
                 <select
                   id={`${formId}-subject`}
                   value={subjectFilter}
-                  onChange={(e) => setSubjectFilter(e.target.value)}
+                  onChange={(e) => {
+                    setSubjectFilter(e.target.value);
+                    setFormatFilter("ALL");
+                  }}
                   className="w-full rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs text-foreground focus:border-accent focus:outline-hidden"
                 >
                   <option value="ALL">🌐 Tất cả môn học</option>
@@ -477,11 +534,27 @@ export function SharePapersForm({
                   onChange={(e) => setFormatFilter(e.target.value as FormatFilter)}
                   className="w-full rounded-lg border border-line bg-card px-2.5 py-1.5 text-xs text-foreground focus:border-accent focus:outline-hidden"
                 >
-                  <option value="ALL">🌟 Tất cả dạng toán</option>
-                  <option value="linear">Phương trình bậc 1</option>
-                  <option value="quadratic">Phương trình bậc 2</option>
-                  <option value="system">Hệ 2 phương trình bậc nhất</option>
-                  <option value="word_problem">Toán thực tế / Lời văn</option>
+                  {isPhysicsSubject ? (
+                    <>
+                      <option value="ALL">🌟 Tất cả dạng Vật lý</option>
+                      {PHYSICS_FORMAT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </>
+                  ) : isMathSubject ? (
+                    <>
+                      <option value="ALL">🌟 Tất cả dạng Toán</option>
+                      {MATH_FORMAT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </>
+                  ) : (
+                    <option value="ALL">⚠️ Vui lòng chọn môn</option>
+                  )}
                 </select>
               </div>
             </div>
