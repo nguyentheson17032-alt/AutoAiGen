@@ -72,8 +72,10 @@ public class User {
     }
 
     public void applyElo(int newRating) {
-        this.eloRating = newRating;
-        RankCode theoreticalRank = RankCode.fromElo(newRating);
+        int maxAllowed = this.rankCode != null ? this.rankCode.maxElo() : Integer.MAX_VALUE;
+        int targetRating = Math.min(newRating, maxAllowed);
+        this.eloRating = targetRating;
+        RankCode theoreticalRank = RankCode.fromElo(targetRating);
         if (this.rankCode == null) {
             this.rankCode = theoreticalRank;
         } else if (theoreticalRank.ordinal() < this.rankCode.ordinal()) {
@@ -81,6 +83,7 @@ public class User {
             this.rankCode = theoreticalRank;
         }
     }
+
 
     public void promoteTo(RankCode newRank) {
         if (newRank != null && (this.rankCode == null || newRank.ordinal() > this.rankCode.ordinal())) {

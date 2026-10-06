@@ -129,6 +129,15 @@ public class EloService {
         return eloEventRepository.save(event);
     }
 
+    @Transactional
+    public EloEvent applyPromotionPenalty(User user, Attempt attempt) {
+        int before = user.getEloRating();
+        int after = Math.max(EloCalculator.MIN_ELO, before - 5);
+        user.applyElo(after);
+        EloEvent event = EloEvent.record(user, attempt, null, before, after, EloReason.ATTEMPT_GRADED);
+        return eloEventRepository.save(event);
+    }
+
     public PageResponse<EloEventResponse> history(UUID userId, Pageable pageable) {
         return PageResponse.from(
                 eloEventRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable).map(EloEventResponse::from)

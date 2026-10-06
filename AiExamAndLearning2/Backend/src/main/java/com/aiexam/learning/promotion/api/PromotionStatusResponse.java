@@ -15,6 +15,9 @@ public record PromotionStatusResponse(
         double minPassingRatio,
         int requiredWins,
         int currentWins,
+        boolean mathPassed,
+        boolean physicsPassed,
+        String nextSubjectName,
         boolean maxRankReached,
         String description
 ) {
@@ -30,9 +33,13 @@ public record PromotionStatusResponse(
                 0,
                 0.80,
                 2,
-                0,
+                2,
+                true,
+                true,
+                null,
                 true,
                 "Bạn đã đạt bậc xếp hạng cao nhất (DIAMOND)!"
         );
     }
 }
+

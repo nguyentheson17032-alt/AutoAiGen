@@ -76,24 +76,29 @@ Tổng điểm attempt = tổng `AttemptAnswer.score`. `maxScore` lấy từ `Pa
 ## 2. Xếp hạng user (rank) & Chuỗi bài thi thăng hạng (Promotion Series)
 
 ### 2.1 Bậc Rank và Ngưỡng Elo
-| Rank | Elo | Yêu cầu bài thi thăng hạng |
+| Rank | Elo Max của hạng | Yêu cầu bài thi thăng hạng (2 bài: 1 môn Toán, 1 môn Vật lý) |
 |---|---|---|
-| `BRONZE` | &lt; 1000 | Mức tân thủ |
-| `SILVER` | 1000–1199 | Vượt qua **2 đề Easy 20 câu** (đúng $\ge 80\%$) từ Bronze |
-| `GOLD` | 1200–1399 | Vượt qua **2 đề Medium 20 câu** (đúng $\ge 80\%$) từ Silver |
-| `PLATINUM` | 1400–1599 | Vượt qua **2 đề Hard 15 câu** (đúng $\ge 80\%$) từ Gold |
-| `DIAMOND` | ≥ 1600 | Vượt qua **2 đề Hard 20 câu** (đúng $\ge 80\%$) từ Platinum |
+| `BRONZE` | 1000 | Mức tân thủ |
+| `SILVER` | 1200 | Vượt qua **2 bài thi (1 Toán, 1 Lý)** độ khó **Easy**, đề tổng hợp (20 câu, 10 phút / bài), đúng $\ge 80\%$ |
+| `GOLD` | 1400 | Vượt qua **2 bài thi (1 Toán, 1 Lý)** độ khó **Medium**, đề tổng hợp (20 câu, 10 phút / bài), đúng $\ge 80\%$ |
+| `PLATINUM` | 1600 | Vượt qua **2 bài thi (1 Toán, 1 Lý)** độ khó **Hard**, đề tổng hợp (15 câu, 7.5 phút / bài), đúng $\ge 80\%$ |
+| `DIAMOND` | Không giới hạn | Vượt qua **2 bài thi (1 Toán, 1 Lý)** độ khó **Hard**, đề tổng hợp (20 câu, 10 phút / bài), đúng $\ge 80\%$ |
 
-### 2.2 Quy tắc thăng hạng:
-- **Tích lũy Elo:** Khi Elo đạt ngưỡng của Rank kế tiếp, trạng thái **"Sẵn sàng thăng hạng"** được kích hoạt.
-- **Bài thi thăng hạng:** `POST /api/v1/me/promotion/start` sinh đề thi chuẩn theo độ khó và số lượng câu hỏi quy định.
-- **Tiêu chuẩn đỗ:** Mỗi bài thi cần đạt $\ge 80\%$ số câu đúng. Khi tích lũy đủ **2 bài đỗ**, học sinh chính thức được nâng cấp `rank_code`.
-- **Bảo lưu Rank:** Nếu Elo tăng vượt ngưỡng nhưng chưa thi đỗ chuỗi thăng hạng, Rank vẫn được giữ nguyên ở bậc hiện tại. Nếu Elo rơi sâu xuống dưới mức sàn của Rank, hệ thống sẽ giáng bậc tương ứng (`User.applyElo`).
+### 2.2 Quy tắc thăng hạng & Khóa Elo:
+- **Khóa trần Elo (Elo Capping):** Khi học sinh chưa hoàn thành thăng hạng, điểm Elo chỉ được tích lũy tối đa bằng điểm sàn của Rank kế tiếp (Max của hạng hiện tại: Bronze max 1000, Silver max 1200, Gold max 1400, Platinum max 1600). Phải thi đỗ thăng hạng mới được mở khóa cộng tiếp điểm Elo.
+- **Tích lũy Elo:** Khi Elo đạt ngưỡng max của Rank hiện tại, trạng thái **"Sẵn sàng thăng hạng"** được kích hoạt.
+- **Bài thi thăng hạng:** `POST /api/v1/me/promotion/start` sinh đề thi chuẩn theo môn (Toán / Vật lý), độ khó và số lượng câu hỏi quy định.
+- **Tiêu chuẩn đỗ:** Mỗi bài thi cần đạt $\ge 80\%$ số câu đúng. Khi hoàn thành **1 bài Toán và 1 bài Vật lý**, học sinh chính thức được nâng cấp `rank_code`.
+- **Phạt khi làm bài thăng hạng không đạt:**
+  - Làm 1 bài không đạt chuẩn ($\text{đúng} < 80\%$): Bị **trừ 5 Elo**.
+  - Không đạt cả 2 bài: Bị **trừ 10 Elo** (mỗi bài rớt trừ 5 Elo).
+- **Bảo lưu Rank & Giáng bậc:** Nếu Elo tăng vượt ngưỡng nhưng chưa thi đỗ chuỗi thăng hạng, Rank vẫn được giữ nguyên ở bậc hiện tại. Nếu Elo rơi sâu xuống dưới mức sàn của Rank, hệ thống sẽ giáng bậc tương ứng (`User.applyElo`).
 
 API / UI:
 - `GET /api/v1/me/promotion` — Trạng thái chuỗi thăng hạng (`PromotionController`)
 - `POST /api/v1/me/promotion/start` — Bắt đầu bài thi thăng hạng (`PromotionController`)
 - UI: Card Thử Thách Thăng Hạng tại [`frontend/components/promotion-challenge-card.tsx`](frontend/components/promotion-challenge-card.tsx) trên trang Cá nhân [`frontend/app/me/page.tsx`](frontend/app/me/page.tsx).
+
 
 ---
 

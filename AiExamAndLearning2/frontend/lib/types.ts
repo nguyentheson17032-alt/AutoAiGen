@@ -27,9 +27,13 @@ export type PromotionStatusResponse = {
   minPassingRatio: number;
   requiredWins: number;
   currentWins: number;
+  mathPassed?: boolean;
+  physicsPassed?: boolean;
+  nextSubjectName?: string | null;
   maxRankReached: boolean;
   description: string;
 };
+
 
 export type SessionUser = {
   userId: string;

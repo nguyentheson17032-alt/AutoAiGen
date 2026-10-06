@@ -88,10 +88,12 @@ export function PromotionChallengeCard({ status }: { status: PromotionStatusResp
         <div className="rounded-xl border border-line bg-background/60 p-4">
           <p className="text-xs font-semibold text-muted">📋 Cấu trúc đề thi thăng hạng:</p>
           <ul className="mt-2 space-y-1 text-xs text-foreground">
-            <li>• Độ khó: <strong className="text-accent">{status.difficulty}</strong></li>
-            <li>• Quy mô: <strong>{status.questionCount} câu hỏi</strong> hỗn hợp</li>
-            <li>• Thời gian làm bài: <strong>{status.durationMinutes} phút</strong></li>
+            <li>• Môn thi bắt buộc: <strong>2 bài (1 môn Toán, 1 môn Vật lý)</strong></li>
+            <li>• Độ khó: <strong className="text-accent">{status.difficulty}</strong> (Đề tổng hợp)</li>
+            <li>• Quy mô: <strong>{status.questionCount} câu hỏi</strong></li>
+            <li>• Thời gian làm bài: <strong>{status.targetRank === "PLATINUM" ? "7.5 phút" : `${status.durationMinutes} phút`}</strong></li>
             <li>• Tiêu chuẩn đạt: <strong>Đúng trên {Math.round(status.minPassingRatio * 100)}% số câu</strong></li>
+            <li className="pt-1 text-[11px] text-red-500/90">• Không đạt: <strong>Trừ 5 Elo/bài</strong> (trượt cả 2 bài trừ 10 Elo)</li>
           </ul>
         </div>
 
@@ -100,27 +102,33 @@ export function PromotionChallengeCard({ status }: { status: PromotionStatusResp
           <div>
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-muted">Tiến độ chuỗi thăng hạng:</span>
-              <span className="font-bold text-accent">{status.currentWins} / {status.requiredWins} bài đạt</span>
+              <span className="font-bold text-accent">{status.currentWins} / {status.requiredWins} môn đạt</span>
             </div>
             <div className="mt-3 flex gap-2">
-              {Array.from({ length: status.requiredWins }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`flex flex-1 items-center justify-center rounded-lg border py-2 text-xs font-bold transition-all ${
-                    i < status.currentWins
-                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-500"
-                      : "border-line bg-background text-muted"
-                  }`}
-                >
-                  {i < status.currentWins ? "✓ Bài " + (i + 1) + " Đạt" : "Bài " + (i + 1) + " (Chưa)"}
-                </div>
-              ))}
+              <div
+                className={`flex flex-1 items-center justify-center rounded-lg border py-2 text-xs font-bold transition-all ${
+                  status.mathPassed
+                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-500"
+                    : "border-line bg-background text-muted"
+                }`}
+              >
+                {status.mathPassed ? "✓ Môn Toán (Đạt)" : "Bài 1: Môn Toán"}
+              </div>
+              <div
+                className={`flex flex-1 items-center justify-center rounded-lg border py-2 text-xs font-bold transition-all ${
+                  status.physicsPassed
+                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-500"
+                    : "border-line bg-background text-muted"
+                }`}
+              >
+                {status.physicsPassed ? "✓ Môn Vật lý (Đạt)" : "Bài 2: Môn Vật lý"}
+              </div>
             </div>
           </div>
 
           {!status.eligible && (
             <p className="mt-3 text-[11px] text-amber-500/90">
-              💡 Bạn đang có <strong>{status.currentElo} Elo</strong>. Cần thêm <strong>{Math.max(0, status.minEloThreshold - status.currentElo)} Elo</strong> nữa để kích hoạt bài thi thăng hạng.
+              💡 Bạn đang có <strong>{status.currentElo} Elo</strong>. Cần thêm <strong>{Math.max(0, status.minEloThreshold - status.currentElo)} Elo</strong> nữa để kích hoạt bài thi thăng hạng (Elo đang bị khóa ở mức tối đa của Rank hiện tại).
             </p>
           )}
         </div>
@@ -145,7 +153,7 @@ export function PromotionChallengeCard({ status }: { status: PromotionStatusResp
               <span>Đang tạo đề thi thăng hạng...</span>
             ) : (
               <>
-                <span>🔥 Bắt đầu bài thi thăng hạng (Bài {status.currentWins + 1}/{status.requiredWins})</span>
+                <span>🔥 Bắt đầu bài thi thăng hạng (Môn {status.nextSubjectName || "Toán"})</span>
                 <span>➔</span>
               </>
             )}
@@ -155,3 +163,4 @@ export function PromotionChallengeCard({ status }: { status: PromotionStatusResp
     </div>
   );
 }
+

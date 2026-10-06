@@ -46,6 +46,16 @@ public enum RankCode {
         };
     }
 
+    public int maxElo() {
+        return switch (this) {
+            case BRONZE -> 1000;
+            case SILVER -> 1200;
+            case GOLD -> 1400;
+            case PLATINUM -> 1600;
+            case DIAMOND -> Integer.MAX_VALUE;
+        };
+    }
+
     public RankCode nextRank() {
         return switch (this) {
             case BRONZE -> SILVER;
@@ -62,11 +72,12 @@ public enum RankCode {
             return null;
         }
         return switch (this) {
-            case BRONZE -> new PromotionRequirement(BRONZE, SILVER, 1000, Difficulty.BEGINNER, 20, 20, 0.80, 2);
-            case SILVER -> new PromotionRequirement(SILVER, GOLD, 1200, Difficulty.INTERMEDIATE, 20, 25, 0.80, 2);
-            case GOLD -> new PromotionRequirement(GOLD, PLATINUM, 1400, Difficulty.ADVANCED, 15, 30, 0.80, 2);
-            case PLATINUM -> new PromotionRequirement(PLATINUM, DIAMOND, 1600, Difficulty.ADVANCED, 20, 40, 0.80, 2);
+            case BRONZE -> new PromotionRequirement(BRONZE, SILVER, 1000, Difficulty.BEGINNER, 20, 10, 0.80, 2);
+            case SILVER -> new PromotionRequirement(SILVER, GOLD, 1200, Difficulty.INTERMEDIATE, 20, 10, 0.80, 2);
+            case GOLD -> new PromotionRequirement(GOLD, PLATINUM, 1400, Difficulty.ADVANCED, 15, 8, 0.80, 2);
+            case PLATINUM -> new PromotionRequirement(PLATINUM, DIAMOND, 1600, Difficulty.ADVANCED, 20, 10, 0.80, 2);
             case DIAMOND -> null;
         };
     }
 }
+

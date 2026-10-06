@@ -32,6 +32,12 @@ public class PromotionService {
     private final PaperService paperService;
     private final SubjectRepository subjectRepository;
 
+    public record PromotionSubjectProgress(
+            boolean mathPassed,
+            boolean physicsPassed,
+            int totalWins
+    ) {}
+
     public PromotionStatusResponse getStatus(UUID userId) {
         User user = getUser(userId);
         RankCode currentRank = user.getRankCode();
@@ -41,10 +47,12 @@ public class PromotionService {
             return PromotionStatusResponse.maxRank(currentRank, user.getEloRating());
         }
 
-        int currentWins = countRecentPassedPromotionAttempts(userId, req.targetRank(), req.minEloThreshold());
+        PromotionSubjectProgress progress = getPromotionSubjectProgress(userId, req.minEloThreshold());
         boolean eligible = user.getEloRating() >= req.minEloThreshold();
-        String description = "Cần " + req.requiredWins() + " bài thi đạt >= " + Math.round(req.minPassingRatio() * 100) +
+        String description = "Cần đỗ 2 bài thi (1 môn Toán, 1 môn Vật lý) đạt >= " + Math.round(req.minPassingRatio() * 100) +
                 "% số câu đúng để thăng hạng " + req.targetRank();
+
+        String nextSubjectName = !progress.mathPassed() ? "Toán" : (!progress.physicsPassed() ? "Vật lý" : "Đã hoàn thành");
 
         return new PromotionStatusResponse(
                 currentRank,
@@ -57,7 +65,10 @@ public class PromotionService {
                 req.durationMinutes(),
                 req.minPassingRatio(),
                 req.requiredWins(),
-                Math.min(req.requiredWins(), currentWins),
+                progress.totalWins(),
+                progress.mathPassed(),
+                progress.physicsPassed(),
+                nextSubjectName,
                 false,
                 description
         );
@@ -80,15 +91,28 @@ public class PromotionService {
             );
         }
 
-        Subject subject = subjectId != null
-                ? subjectRepository.findById(subjectId).orElseThrow(() -> new ResourceNotFoundException("SUBJECT_NOT_FOUND", "Subject not found: " + subjectId))
-                : subjectRepository.findFirstByOrderByNameAsc().orElseThrow(() -> new ResourceNotFoundException("NO_SUBJECT", "No subject found"));
+        PromotionSubjectProgress progress = getPromotionSubjectProgress(userId, req.minEloThreshold());
 
-        int currentWins = countRecentPassedPromotionAttempts(userId, req.targetRank(), req.minEloThreshold());
-        int examIndex = Math.min(req.requiredWins(), currentWins + 1);
+        Subject subject;
+        if (subjectId != null) {
+            subject = subjectRepository.findById(subjectId)
+                    .orElseThrow(() -> new ResourceNotFoundException("SUBJECT_NOT_FOUND", "Subject not found: " + subjectId));
+        } else {
+            if (!progress.mathPassed()) {
+                subject = resolveMathSubject();
+            } else if (!progress.physicsPassed()) {
+                subject = resolvePhysicsSubject();
+            } else {
+                subject = resolveMathSubject();
+            }
+        }
 
-        String title = "Thử thách thăng hạng " + req.targetRank() + " (Bài " + examIndex + "/" + req.requiredWins() + ")";
-        String desc = "Đạt >= " + Math.round(req.minPassingRatio() * 100) + "% số câu đúng (" + req.questionCount() + " câu) để tích lũy 1 lượt thắng thăng hạng " + req.targetRank();
+        String subjectLabel = isPhysicsSubject(subject) ? "Vật lý" : "Toán";
+        int examIndex = Math.min(req.requiredWins(), progress.totalWins() + 1);
+
+        String title = "Thử thách thăng hạng " + req.targetRank() + " (Bài " + examIndex + "/2: Môn " + subjectLabel + ")";
+        String desc = "Đề tổng hợp " + req.questionCount() + " câu độ khó " + req.difficulty() +
+                " · Đạt >= " + Math.round(req.minPassingRatio() * 100) + "% số câu đúng để đỗ bài thi môn " + subjectLabel;
 
         int preferredMin = Math.max(100, req.minEloThreshold() - 150);
         int preferredMax = req.minEloThreshold() + 150;
@@ -121,17 +145,17 @@ public class PromotionService {
         }
 
         if (scoreRatio >= req.minPassingRatio()) {
-            int previousWins = countRecentPassedPromotionAttempts(user.getId(), req.targetRank(), req.minEloThreshold());
-            // including this graded attempt, check if wins reach requiredWins
-            if (previousWins >= req.requiredWins()) {
+            PromotionSubjectProgress progress = getPromotionSubjectProgress(user.getId(), req.minEloThreshold());
+            if (progress.mathPassed() && progress.physicsPassed()) {
                 user.promoteTo(req.targetRank());
             }
         }
     }
 
-    public int countRecentPassedPromotionAttempts(UUID userId, RankCode targetRank, int minEloThreshold) {
+    public PromotionSubjectProgress getPromotionSubjectProgress(UUID userId, int minEloThreshold) {
         List<Attempt> gradedAttempts = attemptRepository.findByUserId(userId, org.springframework.data.domain.Pageable.unpaged()).getContent();
-        int passCount = 0;
+        boolean mathPassed = false;
+        boolean physicsPassed = false;
         for (Attempt a : gradedAttempts) {
             if (a.getStatus() == AttemptStatus.GRADED
                     && a.getPaper() != null
@@ -142,11 +166,49 @@ public class PromotionService {
                     && a.getMaxScore().signum() > 0) {
                 double ratio = a.getScore().doubleValue() / a.getMaxScore().doubleValue();
                 if (ratio >= 0.80) {
-                    passCount++;
+                    Subject subject = a.getPaper().getSubject();
+                    if (isPhysicsSubject(subject)) {
+                        physicsPassed = true;
+                    } else {
+                        // Default / Math
+                        mathPassed = true;
+                    }
                 }
             }
         }
-        return passCount;
+        int totalWins = (mathPassed ? 1 : 0) + (physicsPassed ? 1 : 0);
+        return new PromotionSubjectProgress(mathPassed, physicsPassed, totalWins);
+    }
+
+    public int countRecentPassedPromotionAttempts(UUID userId, RankCode targetRank, int minEloThreshold) {
+        return getPromotionSubjectProgress(userId, minEloThreshold).totalWins();
+    }
+
+    public boolean isMathSubject(Subject s) {
+        if (s == null) return false;
+        String code = s.getCode() != null ? s.getCode().toUpperCase() : "";
+        String name = s.getName() != null ? s.getName().toLowerCase() : "";
+        return code.contains("MATH") || name.contains("toán");
+    }
+
+    public boolean isPhysicsSubject(Subject s) {
+        if (s == null) return false;
+        String code = s.getCode() != null ? s.getCode().toUpperCase() : "";
+        String name = s.getName() != null ? s.getName().toLowerCase() : "";
+        return code.contains("PHYSIC") || name.contains("lý") || name.contains("vật");
+    }
+
+    private Subject resolveMathSubject() {
+        return subjectRepository.findByCode("MATH")
+                .or(() -> subjectRepository.findByNameIgnoreCase("Toán"))
+                .orElseGet(() -> subjectRepository.save(Subject.create("MATH", "Toán", "Môn Toán học")));
+    }
+
+    private Subject resolvePhysicsSubject() {
+        return subjectRepository.findByCode("PHYSICS")
+                .or(() -> subjectRepository.findByNameIgnoreCase("Vật lý"))
+                .or(() -> subjectRepository.findByNameIgnoreCase("Vật Lí"))
+                .orElseGet(() -> subjectRepository.save(Subject.create("PHYSICS", "Vật lý", "Môn Vật lý")));
     }
 
     private User getUser(UUID userId) {
@@ -154,3 +216,4 @@ public class PromotionService {
                 .orElseThrow(() -> new ResourceNotFoundException("USER_NOT_FOUND", "User not found: " + userId));
     }
 }
+

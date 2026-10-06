@@ -14,6 +14,7 @@ import com.aiexam.learning.elo.domain.EloCalculator;
 import com.aiexam.learning.elo.domain.EloEvent;
 import com.aiexam.learning.elo.domain.EloService;
 import com.aiexam.learning.paper.domain.Paper;
+import com.aiexam.learning.paper.domain.PaperKind;
 import com.aiexam.learning.paper.domain.PaperQuestion;
 import com.aiexam.learning.paper.domain.PaperSection;
 import com.aiexam.learning.paper.domain.PaperService;
@@ -112,10 +113,17 @@ public class AttemptService {
         int paperElo = EloCalculator.paperRating(
                 attempt.getPaper().getTargetEloMin(),
                 attempt.getPaper().getTargetEloMax());
-        EloEvent event = eloService.applyAttemptResult(attempt.getUser(), attempt, paperElo, total, max, items);
+        boolean isPromotion = attempt.getPaper() != null && attempt.getPaper().getKind() == PaperKind.PROMOTION;
+        EloEvent event;
+        if (isPromotion && ratio < 0.80) {
+            event = eloService.applyPromotionPenalty(attempt.getUser(), attempt);
+        } else {
+            event = eloService.applyAttemptResult(attempt.getUser(), attempt, paperElo, total, max, items);
+        }
         attempt.markGraded(total, event.getRatingBefore(), event.getRatingAfter());
         promotionService.checkAndApplyPromotion(attempt.getUser(), attempt, ratio);
         return AttemptResponse.from(attempt);
+
     }
 
     public AttemptResponse get(UUID userId, UUID attemptId) {
