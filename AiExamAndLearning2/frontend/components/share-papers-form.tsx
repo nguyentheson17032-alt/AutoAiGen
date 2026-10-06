@@ -79,7 +79,7 @@ function matchesQuestionCount(count: number, filter: QuestionCountFilter): boole
 
 function matchesFormat(paper: ClassPaper, filter: FormatFilter): boolean {
   if (filter === "ALL") return true;
-  const text = foldText(`${paper.title || ""} ${paper.description || ""}`);
+  const text = foldText(paper.title);
 
   switch (filter) {
     // Dạng Toán
