@@ -37,7 +37,7 @@ public record AttemptResponse(
                         answer.getGradedBy()
                 ))
                 .toList();
-        RankCode rank = attempt.getEloAfter() == null ? null : RankCode.fromElo(attempt.getEloAfter());
+        RankCode rank = attempt.getUser() != null ? attempt.getUser().getRankCode() : null;
         return new AttemptResponse(
                 attempt.getId(),
                 attempt.getUser().getId(),

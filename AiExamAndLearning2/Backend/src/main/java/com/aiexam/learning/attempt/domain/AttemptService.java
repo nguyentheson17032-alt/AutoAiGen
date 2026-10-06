@@ -115,14 +115,19 @@ public class AttemptService {
                 attempt.getPaper().getTargetEloMax());
         boolean isPromotion = attempt.getPaper() != null && attempt.getPaper().getKind() == PaperKind.PROMOTION;
         EloEvent event;
-        if (isPromotion && ratio < 0.80) {
-            event = eloService.applyPromotionPenalty(attempt.getUser(), attempt);
+        if (isPromotion) {
+            if (ratio < 0.80) {
+                event = eloService.applyPromotionPenalty(attempt.getUser(), attempt);
+            } else {
+                event = eloService.applyPromotionPass(attempt.getUser(), attempt);
+            }
         } else {
             event = eloService.applyAttemptResult(attempt.getUser(), attempt, paperElo, total, max, items);
         }
         attempt.markGraded(total, event.getRatingBefore(), event.getRatingAfter());
         promotionService.checkAndApplyPromotion(attempt.getUser(), attempt, ratio);
         return AttemptResponse.from(attempt);
+
 
     }
 

@@ -138,6 +138,14 @@ public class EloService {
         return eloEventRepository.save(event);
     }
 
+    @Transactional
+    public EloEvent applyPromotionPass(User user, Attempt attempt) {
+        int before = user.getEloRating();
+        int after = before; // Passing promotion test does NOT add Elo (+0)
+        EloEvent event = EloEvent.record(user, attempt, null, before, after, EloReason.ATTEMPT_GRADED);
+        return eloEventRepository.save(event);
+    }
+
     public PageResponse<EloEventResponse> history(UUID userId, Pageable pageable) {
         return PageResponse.from(
                 eloEventRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable).map(EloEventResponse::from)

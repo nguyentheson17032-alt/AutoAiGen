@@ -25,8 +25,9 @@ public record EloEventResponse(
                 event.getRatingAfter(),
                 event.getDelta(),
                 event.getReason(),
-                RankCode.fromElo(event.getRatingAfter()),
+                event.getUser() != null ? event.getUser().getRankCode() : null,
                 event.getCreatedAt()
         );
     }
 }
+
